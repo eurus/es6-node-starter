@@ -1,0 +1,7 @@
+node_modules
+dist
+.project
+.settings
+public/js
+public/css
+
