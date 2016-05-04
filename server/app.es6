@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import jade from 'jade';
-import {sum} from './users';
+import {sum, userRouter} from './users';
 
 let app = express();
 let router = Router();
@@ -25,7 +25,7 @@ router.get('/',(req,res,next) => {
 });
 
 
-app.use('/',router);
+app.use('/users',userRouter);
 
 app.listen(3000,()=>{
   console.log('server listening at port 3000...');
