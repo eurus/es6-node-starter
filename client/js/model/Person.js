@@ -8,4 +8,4 @@ class Person {
         return `${this.firstName} ${this.lastName}`;
     }
 }
-export {Person}
+export {Person};

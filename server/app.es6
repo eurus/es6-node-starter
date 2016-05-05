@@ -17,16 +17,12 @@ app.engine('jade', jade.__express);
 
 app.use(express.static(path.join(__dirname,'..', 'public')));
 
-router.get('/',(req,res,next) => {
-  // res.end('hello world!');
-  console.log(path.join(__dirname, 'public'));
-  console.log(sum(1,2));
+app.get('/',(req,res,next) => {
   res.render('index', {title: 'ES6-Node'});
 });
-
 
 app.use('/users',userRouter);
 
 app.listen(3000,()=>{
   console.log('server listening at port 3000...');
-})
+});

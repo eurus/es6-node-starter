@@ -1,22 +1,42 @@
-var gulp = require('gulp');
-var browserify = require('browserify');
-var watchify = require('watchify');
-var babelify = require('babelify');
-var source = require('vinyl-source-stream');
-var _ = require('lodash');
-var plumber = require('gulp-plumber');
-var autoprefixer = require('gulp-autoprefixer'),
+var gulp = require('gulp'),
+
+    // compile CommonJS to AMD
+    browserify = require('browserify'),
+    watchify = require('watchify'),
+
+    // ES6 support
+    babelify = require('babelify'),
+    source = require('vinyl-source-stream'),
+    _ = require('lodash'),
+
+    // sass
+    sass = require('gulp-sass'),
+    plumber = require('gulp-plumber'),
     clean = require('gulp-clean-css'),
-    rename = require('gulp-rename');
-var sass = require('gulp-sass');
+    rename = require('gulp-rename'),
+    autoprefixer = require('gulp-autoprefixer'),
+
+    // start node server
+    nodemon = require('gulp-nodemon'),
+
+    // live reload
+    tinylr = require('tiny-lr')();
 
 var config = {
-  entryFile: './client/js/app.js',
-  outputDir: './public/js/',
-  outputFile: 'bundle.js'
+    // js
+    jsEntryFile: './client/js/app.js',
+    jsOutDir: './public/js/',
+    jsOutFile: 'bundle.js',
+    jsSrcDir: './client/js/',
+
+    // scss & css
+    scssDir: './client/sass/',
+    cssOutDir: './public/css/',
+
+    // view
+    viewDir: './views/',
 };
 
-var cssOutDir = 'public/css/';
 var cssPattern = 'public/css/**';
 var viewPattern = 'views/**';
 var scssPattern = 'client/sass/*.scss';
@@ -31,60 +51,73 @@ function notifyLiveReload(event) {
 }
 
 var bundler;
-function getBundler() {
-  if (!bundler) {
-    bundler = watchify(browserify(config.entryFile, _.extend({ debug: true }, watchify.args)));
-  }
-  return bundler;
-}
 
-function bundle() {
-  return getBundler()
-    .transform(babelify)
-    .bundle()
-    .on('error', function(err) { console.log('Error: ' + err.message); })
-    .pipe(source(config.outputFile))
-    .pipe(gulp.dest(config.outputDir));
+function getBundler() {
+    if (!bundler) {
+        bundler = watchify(browserify(config.jsEntryFile, _.extend({
+            debug: true
+        }, watchify.args)));
+    }
+    return bundler;
 }
 
 gulp.task('build', function() {
-  return bundle();
+    getBundler()
+        .transform(babelify)
+        .bundle()
+        .on('error', function(err) {
+            console.log('Error: ' + err.message);
+        })
+        .pipe(source(config.jsOutFile))
+        .pipe(gulp.dest(config.jsOutDir));
+});
+
+gulp.task('start', function() {
+    nodemon({
+        script: 'run.js',
+        ext: 'es6 jade',
+        env: {
+            'NODE_ENV': 'development'
+        }
+    });
 });
 
 gulp.task('livereload', function() {
-    tinylr = require('tiny-lr')();
     tinylr.listen(35729);
 });
 
 gulp.task('styles', function() {
-    gulp.src(scssPattern)
+    gulp.src(config.scssDir + '/*.scss')
         .pipe(plumber())
         .pipe(sass())
         .pipe(autoprefixer({
             browsers: ['last 2 versions'],
             cascade: false
         }))
-        .pipe(gulp.dest(cssOutDir))
+        .pipe(gulp.dest(config.cssOutDir))
         .pipe(rename({
             suffix: '.min'
         }))
         .pipe(clean({
             compatibility: 'ie8'
         }))
-        .pipe(gulp.dest(cssOutDir));
+        .pipe(gulp.dest(config.cssOutDir));
 });
 
 gulp.task('watch', function() {
-    gulp.watch("src/**", ['build'] );
-    gulp.watch(scssPattern, ['styles']);
-    gulp.watch(cssOutDir, notifyLiveReload);
-    gulp.watch(config.outputDir+"/**", notifyLiveReload);
-    gulp.watch(viewPattern, notifyLiveReload);
+    gulp.watch(config.scssDir + '**', ['styles']);
+    gulp.watch(config.jsSrcDir + '**', ['build']);
+
+    // live reload
+    gulp.watch(config.cssOutDir + '**', notifyLiveReload);
+    gulp.watch(config.jsOutDir + '**', notifyLiveReload);
+    gulp.watch(config.viewDir + '**', notifyLiveReload);
 });
 
 gulp.task('default', [
     'build',
     'styles',
     'livereload',
+    'start',
     'watch'
 ]);
