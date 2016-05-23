@@ -23,8 +23,14 @@ var config = {
     // scss & css
     cssDestDir: './public/css/',
 
+    // img
+    imgDestDir: './public/img/',
+
 
     // Pattern
+    // img
+    imgPattern: './client/img/**/*.*',
+
     // es & js
     esPattern: './client/es/**/*.js',
     jsPattern: './public/js/**/*.js',
@@ -39,17 +45,6 @@ var config = {
     // server
     serverPattern: './server/**/*.js'
 };
-
-gulp.task('start', function() {
-    nodemon({
-        script: 'run.js',
-        ext: 'es6',
-        env: {
-            'NODE_ENV': 'development'
-        },
-        ignore: [config.viewPattern]
-    });
-});
 
 gulp.task('styles', () => {
     return gulp.src(config.scssPattern)
@@ -110,6 +105,7 @@ gulp.task('lint', () => {
         })
         .pipe(gulp.dest('app/scripts'));
 });
+
 gulp.task('lint:test', () => {
     return lint('test/spec/**/*.js', {
             fix: true,
@@ -121,7 +117,7 @@ gulp.task('lint:test', () => {
 });
 
 gulp.task('images', () => {
-    return gulp.src('app/images/**/*')
+    return gulp.src(config.imgPattern)
         .pipe($.cache($.imagemin({
             progressive: true,
             interlaced: true,
@@ -131,14 +127,7 @@ gulp.task('images', () => {
                 cleanupIDs: false
             }]
         })))
-        .pipe(gulp.dest('dist/images'));
-});
-
-gulp.task('fonts', () => {
-    return gulp.src(require('main-bower-files')('**/*.{eot,svg,ttf,woff,woff2}', function(err) {})
-            .concat('app/fonts/**/*'))
-        .pipe(gulp.dest('.tmp/fonts'))
-        .pipe(gulp.dest('dist/fonts'));
+        .pipe(gulp.dest(config.imgDestDir));
 });
 
 gulp.task('clean', del.bind(null, ['public']));
