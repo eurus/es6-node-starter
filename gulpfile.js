@@ -1,123 +1,181 @@
-var gulp = require('gulp'),
+// generated on 2016-05-22 using generator-webapp 2.1.0
+const gulp = require('gulp');
+const gulpLoadPlugins = require('gulp-load-plugins');
+const browserSync = require('browser-sync');
+const del = require('del');
+const wiredep = require('wiredep').stream;
 
-    // compile CommonJS to AMD
-    browserify = require('browserify'),
-    watchify = require('watchify'),
+const source = require('vinyl-source-stream');
+const _ = require('underscore');
+const browserify = require('browserify');
+const babelify = require('babelify');
+const browserifyCss = require('browserify-css');
 
-    // ES6 support
-    babelify = require('babelify'),
-    source = require('vinyl-source-stream'),
-    _ = require('lodash'),
-
-    // sass
-    sass = require('gulp-sass'),
-    plumber = require('gulp-plumber'),
-    clean = require('gulp-clean-css'),
-    rename = require('gulp-rename'),
-    autoprefixer = require('gulp-autoprefixer'),
-
-    // start node server
-    nodemon = require('gulp-nodemon'),
-
-    // live reload
-    tinylr = require('tiny-lr')();
-
+const $ = gulpLoadPlugins();
+const reload = browserSync.reload;
 var config = {
+    // Dirs
     // js
-    jsEntryFile: './client/js/app.js',
-    jsOutDir: './public/js/',
-    jsOutFile: 'bundle.js',
-    jsSrcDir: './client/js/',
+    jsEntryFile: './client/es/app.js',
+    jsDestDir: './public/js/',
+    bundleFile: 'bundle.js',
 
     // scss & css
-    scssDir: './client/sass/',
-    cssOutDir: './public/css/',
+    cssDestDir: './public/css/',
+
+
+    // Pattern
+    // es & js
+    esPattern: './client/es/**/*.js',
+    jsPattern: './public/js/**/*.js',
+
+    // scss & css
+    scssPattern: './client/sass/**/*.scss',
+    cssPattern: './public/css/**/*.css',
 
     // view
-    viewDir: './views/',
+    viewPattern: './views/**',
+
+    // server
+    serverPattern: './server/**/*.js'
 };
-
-var cssPattern = 'public/css/**';
-var viewPattern = 'views/**';
-var scssPattern = 'client/sass/*.scss';
-
-function notifyLiveReload(event) {
-    var fileName = require('path').relative(__dirname, event.path);
-    tinylr.changed({
-        body: {
-            files: [fileName]
-        }
-    });
-}
-
-var bundler;
-
-function getBundler() {
-    if (!bundler) {
-        bundler = watchify(browserify(config.jsEntryFile, _.extend({
-            debug: true
-        }, watchify.args)));
-    }
-    return bundler;
-}
-
-gulp.task('build', function() {
-    getBundler()
-        .transform(babelify)
-        .bundle()
-        .on('error', function(err) {
-            console.log('Error: ' + err.message);
-        })
-        .pipe(source(config.jsOutFile))
-        .pipe(gulp.dest(config.jsOutDir));
-});
 
 gulp.task('start', function() {
     nodemon({
         script: 'run.js',
-        ext: 'es6 jade',
+        ext: 'es6',
         env: {
             'NODE_ENV': 'development'
-        }
+        },
+        ignore: [config.viewPattern]
     });
 });
 
-gulp.task('livereload', function() {
-    tinylr.listen(35729);
-});
-
-gulp.task('styles', function() {
-    gulp.src(config.scssDir + '/*.scss')
-        .pipe(plumber())
-        .pipe(sass())
-        .pipe(autoprefixer({
-            browsers: ['last 2 versions'],
-            cascade: false
+gulp.task('styles', () => {
+    return gulp.src(config.scssPattern)
+        .pipe($.plumber())
+        .pipe($.sourcemaps.init())
+        .pipe($.sass.sync({
+            outputStyle: 'expanded',
+            precision: 10,
+            includePaths: ['.']
+        }).on('error', $.sass.logError))
+        .pipe($.autoprefixer({
+            browsers: ['> 1%', 'last 2 versions', 'Firefox ESR']
         }))
-        .pipe(gulp.dest(config.cssOutDir))
-        .pipe(rename({
+        .pipe(gulp.dest(config.cssDestDir))
+        .pipe($.rename({
             suffix: '.min'
         }))
-        .pipe(clean({
+        .pipe($.cleanCss({
             compatibility: 'ie8'
         }))
-        .pipe(gulp.dest(config.cssOutDir));
+        .pipe($.sourcemaps.write())
+        .pipe(gulp.dest(config.cssDestDir))
+        .pipe(reload({
+            stream: true
+        }));
 });
 
-gulp.task('watch', function() {
-    gulp.watch(config.scssDir + '**', ['styles']);
-    gulp.watch(config.jsSrcDir + '**', ['build']);
-
-    // live reload
-    gulp.watch(config.cssOutDir + '**', notifyLiveReload);
-    gulp.watch(config.jsOutDir + '**', notifyLiveReload);
-    gulp.watch(config.viewDir + '**', notifyLiveReload);
+gulp.task('scripts', () => {
+    return browserify(config.jsEntryFile, {
+            debug: true
+        })
+        .transform(browserifyCss)
+        .transform(babelify)
+        .bundle()
+        //Pass desired output filename to vinyl-source-stream
+        .pipe(source(config.bundleFile))
+        // Start piping stream to tasks!
+        .pipe(gulp.dest(config.jsDestDir))
+        .pipe(reload({
+            stream: true
+        }));
 });
 
-gulp.task('default', [
-    'build',
-    'styles',
-    'livereload',
-    'start',
-    'watch'
-]);
+function lint(files, options) {
+    return gulp.src(files)
+        .pipe(reload({
+            stream: true,
+            once: true
+        }))
+        .pipe($.eslint(options))
+        .pipe($.eslint.format())
+        .pipe($.if(!browserSync.active, $.eslint.failAfterError()));
+}
+
+gulp.task('lint', () => {
+    return lint(config.esPattern, {
+            fix: true
+        })
+        .pipe(gulp.dest('app/scripts'));
+});
+gulp.task('lint:test', () => {
+    return lint('test/spec/**/*.js', {
+            fix: true,
+            env: {
+                mocha: true
+            }
+        })
+        .pipe(gulp.dest('test/spec/**/*.js'));
+});
+
+gulp.task('images', () => {
+    return gulp.src('app/images/**/*')
+        .pipe($.cache($.imagemin({
+            progressive: true,
+            interlaced: true,
+            // don't remove IDs from SVGs, they are often used
+            // as hooks for embedding and styling
+            svgoPlugins: [{
+                cleanupIDs: false
+            }]
+        })))
+        .pipe(gulp.dest('dist/images'));
+});
+
+gulp.task('fonts', () => {
+    return gulp.src(require('main-bower-files')('**/*.{eot,svg,ttf,woff,woff2}', function(err) {})
+            .concat('app/fonts/**/*'))
+        .pipe(gulp.dest('.tmp/fonts'))
+        .pipe(gulp.dest('dist/fonts'));
+});
+
+gulp.task('clean', del.bind(null, ['public']));
+
+gulp.task('default', ['serve'], function() {
+    gulp.watch([
+        config.viewPattern,
+        config.serverPattern,
+    ]).on('change', reload);
+
+    gulp.watch(config.scssPattern, ['styles']);
+    gulp.watch(config.esPattern, ['scripts']);
+});
+
+gulp.task('serve', ['nodemon'], function() {
+    browserSync.init(null, {
+        proxy: "http://localhost:3000",
+        files: ["public/**/*.*"],
+        port: 9000,
+    });
+});
+
+gulp.task('nodemon', function(cb) {
+    var started = false;
+
+    return $.nodemon({
+        script: 'run.js',
+        ext: 'es6',
+        env: {
+            'NODE_ENV': 'development'
+        }
+    }).on('start', function() {
+        // to avoid nodemon being started multiple times
+        // thanks @matthisk
+        if (!started) {
+            cb();
+            started = true;
+        }
+    });
+});
