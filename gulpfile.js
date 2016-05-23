@@ -43,7 +43,7 @@ var config = {
     viewPattern: './views/**',
 
     // server
-    serverPattern: './server/**/*.js'
+    serverPattern: './server/**/*.es6'
 };
 
 gulp.task('styles', () => {
@@ -150,7 +150,7 @@ gulp.task('serve', ['nodemon'], function() {
     });
 });
 
-gulp.task('nodemon', function(cb) {
+gulp.task('nodemon', ['styles', 'scripts'], function(cb) {
     var started = false;
 
     return $.nodemon({
@@ -165,6 +165,20 @@ gulp.task('nodemon', function(cb) {
         if (!started) {
             cb();
             started = true;
+
         }
+        setTimeout(function() {
+            reload({
+                stream: true
+            });
+        }, 500);
+        console.log('start');
+    }).on('restart', function() {
+        console.log('restart');
+        setTimeout(function() {
+            reload({
+                stream: true
+            });
+        }, 1000);
     });
 });
