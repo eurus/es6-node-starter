@@ -30,4 +30,18 @@
 
 然后访问`localhost:9000`即可
 
+```bash
+
+  # sass => css
+  gulp styles
+
+  # es6/commonjs => es5
+  gulp scripts
+
+  # image minify
+  gulp images
+
+  # nodemon
+  gulp nodemon
+```
 
